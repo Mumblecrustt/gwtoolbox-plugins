@@ -37,7 +37,7 @@ jobs:
           Copy-Item -Path $_.FullName -Destination "${{runner.workspace}}/GWToolboxpp/plugins/$pluginName" -Recurse -Force
         }
 
-     - name: Update CMake plugins file
+    - name: Update CMake plugins file
       run: |
         $pluginsFile = "${{runner.workspace}}/GWToolboxpp/cmake/gwtoolboxdll_plugins.cmake"
         

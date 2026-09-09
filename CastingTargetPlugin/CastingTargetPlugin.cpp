@@ -87,6 +87,12 @@ void CastingTargetPlugin::SaveSettings(const wchar_t* folder)
 void CastingTargetPlugin::Initialize(ImGuiContext* ctx, const ImGuiAllocFns allocator_fns, const HMODULE toolbox_dll)
 {
     ToolboxPlugin::Initialize(ctx, allocator_fns, toolbox_dll);
+
+    // Force the window on. This build's Toolbox has no visible interface
+    // control for this plugin, so wait for one would leave Draw() unreachable.
+    if (bool* visible_ptr = GetVisiblePtr()) {
+        *visible_ptr = true;
+    }
 }
 
 void CastingTargetPlugin::SignalTerminate()

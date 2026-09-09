@@ -108,6 +108,12 @@ bool CastingTargetPlugin::CanTerminate()
 
 void CastingTargetPlugin::Draw(IDirect3DDevice9*)
 {
+    static bool has_shown_debug_once = false;
+    if (!has_shown_debug_once) {
+        has_shown_debug_once = true;
+        MessageBoxA(nullptr, "CastingTargetPlugin Draw() is running.", "Debug", MB_OK);
+    }
+
     const GW::AgentArray* agents = GW::Agents::GetAgentArray();
     const GW::Agent* player = agents ? GW::Agents::GetObservingAgent() : nullptr;
 

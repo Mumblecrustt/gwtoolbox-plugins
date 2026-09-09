@@ -37,18 +37,16 @@ jobs:
           Copy-Item -Path $_.FullName -Destination "${{runner.workspace}}/GWToolboxpp/plugins/$pluginName" -Recurse -Force
         }
 
-    - name: Update CMake plugins file
+     - name: Update CMake plugins file
       run: |
         $pluginsFile = "${{runner.workspace}}/GWToolboxpp/cmake/gwtoolboxdll_plugins.cmake"
         
         # Read all lines
         $lines = Get-Content $pluginsFile
         
-        # Remove the last line containing add_tb_plugin(ExamplePlugin)
-        if ($lines[-1] -match "add_tb_plugin\(ExamplePlugin\)") {
-          $lines = $lines[0..($lines.Length-2)]
-          Write-Host "Removed ExamplePlugin line from CMake file"
-        }
+        # Remove any line containing add_tb_plugin(ExamplePlugin)
+        $lines = $lines | Where-Object { $_ -notmatch "add_tb_plugin\(ExamplePlugin\)" }
+        Write-Host "Removed ExamplePlugin line(s) from CMake file"
         
         # Write back the content without the ExamplePlugin line
         Set-Content $pluginsFile -Value $lines

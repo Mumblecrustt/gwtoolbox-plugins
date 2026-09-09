@@ -7,6 +7,7 @@
 #include <GWCA/Utilities/Hook.h>
 
 #include <Utils/GuiUtils.h>
+#include <Timer.h>
 
 namespace {
     bool show_distance_sorted = true;

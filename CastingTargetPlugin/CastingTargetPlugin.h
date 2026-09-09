@@ -3,7 +3,8 @@
 #include <ToolboxUIPlugin.h>
 
 // This plugin lists enemies that cast a spell right now.
-// Each enemy gets one button. Press the button to target that enemy.
+// A configurable key press targets the closest casting enemy.
+// The window shows the list only. It has no clickable target buttons.
 class CastingTargetPlugin : public ToolboxPlugin {
 public:
     CastingTargetPlugin() = default;

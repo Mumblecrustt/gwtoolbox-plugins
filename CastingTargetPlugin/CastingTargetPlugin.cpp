@@ -12,8 +12,12 @@
 namespace {
     bool show_distance_sorted = true;
 
+    // Stored as an int for settings save/load. Cast to ImGuiKey for ImGui calls.
+    int target_key = ImGuiKey_X;
+    bool listening_for_key = false;
+
     // Keep one entry per enemy that stops casting.
-    // This lets a button stay visible for a short time after the cast ends.
+    // This lets the tracked list stay visible for a short time after the cast ends.
     struct CastingEnemy {
         GW::AgentID agent_id = 0;
         clock_t last_seen_casting = 0;
@@ -21,6 +25,21 @@ namespace {
 
     std::vector<CastingEnemy> tracked_enemies;
     constexpr float kButtonLingerSeconds = 1.5f;
+
+    void TargetClosestCastingEnemy()
+    {
+        if (tracked_enemies.empty()) {
+            return;
+        }
+        const GW::AgentID target_id = tracked_enemies.front().agent_id;
+        GW::GameThread::Enqueue([target_id] {
+            auto* fresh_agent = GW::Agents::GetAgentByID(target_id);
+            auto* fresh_living = fresh_agent ? fresh_agent->GetAsAgentLiving() : nullptr;
+            if (fresh_living) {
+                GW::Agents::ChangeTarget(fresh_living);
+            }
+        });
+    }
 }
 
 DLLAPI ToolboxPlugin* ToolboxPluginInstance()
@@ -34,18 +53,34 @@ void CastingTargetPlugin::DrawSettings()
     if (!toolbox_handle) {
         return;
     }
-    ImGui::Checkbox("Sort buttons by distance", &show_distance_sorted);
+
+    ImGui::Checkbox("Sort list by distance", &show_distance_sorted);
+
+    ImGui::Text("Target key:");
+    ImGui::SameLine();
+    if (listening_for_key) {
+        ImGui::TextColored(ImVec4(1.f, 0.8f, 0.2f, 1.f), "Press any key...");
+    }
+    else {
+        ImGui::Text("%s", ImGui::GetKeyName(static_cast<ImGuiKey>(target_key)));
+        ImGui::SameLine();
+        if (ImGui::Button("Change key")) {
+            listening_for_key = true;
+        }
+    }
 }
 
 void CastingTargetPlugin::LoadSettings(const wchar_t* folder)
 {
     ToolboxPlugin::LoadSettings(folder);
     LoadSetting("show_distance_sorted", show_distance_sorted);
+    LoadSetting("target_key", target_key);
 }
 
 void CastingTargetPlugin::SaveSettings(const wchar_t* folder)
 {
     SaveSetting("show_distance_sorted", show_distance_sorted);
+    SaveSetting("target_key", target_key);
     ToolboxPlugin::SaveSettings(folder);
 }
 
@@ -114,8 +149,27 @@ void CastingTargetPlugin::Draw(IDirect3DDevice9*)
         tracked_enemies.clear();
     }
 
+    // Key capture mode: record the next key pressed as the new binding.
+    if (listening_for_key) {
+        for (int key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_NamedKey_END; key++) {
+            if (ImGui::IsKeyPressed(static_cast<ImGuiKey>(key), false)) {
+                target_key = key;
+                listening_for_key = false;
+                break;
+            }
+        }
+    }
+    // Normal mode: a press of the bound key targets the closest tracked enemy.
+    // WantTextInput guards against triggering while an ImGui text field has focus.
+    else if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(static_cast<ImGuiKey>(target_key), false)) {
+        TargetClosestCastingEnemy();
+    }
+
     ImGui::SetNextWindowSize(ImVec2(220, 0), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin(Name(), GetVisiblePtr())) {
+    if (ImGui::Begin(Name())) {
+        ImGui::TextWrapped("Press %s to target the closest casting enemy.", ImGui::GetKeyName(static_cast<ImGuiKey>(target_key)));
+        ImGui::Separator();
+
         if (tracked_enemies.empty()) {
             ImGui::TextDisabled("No enemy casts a spell right now.");
         }
@@ -125,19 +179,7 @@ void CastingTargetPlugin::Draw(IDirect3DDevice9*)
             if (!living) {
                 continue;
             }
-
-            ImGui::PushID(entry.agent_id);
-            if (ImGui::Button("Target", ImVec2(-1, 0))) {
-                const GW::AgentID target_id = entry.agent_id;
-                GW::GameThread::Enqueue([target_id] {
-                    auto* fresh_agent = GW::Agents::GetAgentByID(target_id);
-                    auto* fresh_living = fresh_agent ? fresh_agent->GetAsAgentLiving() : nullptr;
-                    if (fresh_living) {
-                        GW::Agents::ChangeTarget(fresh_living);
-                    }
-                });
-            }
-            ImGui::PopID();
+            ImGui::Text("Agent %u", static_cast<unsigned>(entry.agent_id));
         }
     }
     ImGui::End();

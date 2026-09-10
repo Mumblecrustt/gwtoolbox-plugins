@@ -75,6 +75,13 @@ void CastingTargetPlugin::LoadSettings(const wchar_t* folder)
     ToolboxPlugin::LoadSettings(folder);
     LoadSetting("show_distance_sorted", show_distance_sorted);
     LoadSetting("target_key", target_key);
+
+    // Force visible after the base class loads settings, since a saved
+    // "visible" value of false, from a session with no UI toggle, would
+    // otherwise overwrite anything set earlier in Initialize.
+    if (bool* visible_ptr = GetVisiblePtr()) {
+        *visible_ptr = true;
+    }
 }
 
 void CastingTargetPlugin::SaveSettings(const wchar_t* folder)
